@@ -1,1 +1,1 @@
-# ee240500
+# EE240500 Embedded System Laboratory	
