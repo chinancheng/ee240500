@@ -1,0 +1,426 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>the path of 3D Sensor</title>
+
+
+</head>
+
+<body>
+<h2>The path of 3D Sensor</h2>
+<p2>	1. Black point is the initial point of object.</p2> <br>
+<p2>	2. Red point is the final point of object.</p2> <br>
+<p2>	3. If warning appears, because the car will crash into the wall.</p2> <br><br> 
+<button onclick="stop(en)">Stop</button> 
+<button onclick="reset(ctx,pos,v,en)">Reset</button> 
+<br><br>
+<canvas id="cvs" width="900" height="600"style="border:1px solid #000000;">[No canvas support]</canvas>
+<canvas id="cvs2" width="200" height="200"></canvas><br>
+<p2>Position x : </p2><p2 id=pos0></p2>
+<p2>Position y : </p2><p2 id=pos1></p2><br>
+<p2>Velocity x : </p2><p2 id=v0></p2>
+<p2>Velocity y : </p2><p2 id=v1></p2><br>
+
+<!--
+Debug Informtion:
+<div id="myDivElement" />
+-->
+<script>
+    var c = document.getElementById("cvs");
+    var d = document.getElementById("cvs2");
+    var ctx = c.getContext("2d");
+    var ctx2 = d.getContext("2d");
+    var pos = [450,300,0,0];
+    var v = [0,0] ;
+    var batch=30;
+    var samples=batch;
+    var timecycle=0;
+    var requestCounter = 0;
+    var interval = 0;
+    var nodata = 0;
+    var serverAddressBase = "xdata.";
+    var serverAddress = "xdata.0"; //default file to get from server
+    var en = [1,1];		
+
+    d1 = [];
+    d2 = [];
+    d3 = [];
+function reset(ctx,pos,v,en)
+{
+	ctx.clearRect(0, 0, 900, 600);
+	pos[0] = 450;
+	pos[1] = 300;
+	pos[2] = 0;
+	pos[3] = 0;	
+	v[0] = 0;
+	v[1] = 0;
+	en[0] =1; 
+	graph_init(ctx);
+}
+
+function warning(ctx2,pos,en)
+{
+	if(pos[0]>890 || pos[0]<10 || pos[1]>590 || pos[1]<10){
+		image(ctx2);		
+		en[1] = 0;
+		pos[0] = pos[2];
+		pos[1] = pos[3];
+		v[0] = 0;
+		v[1] = 0;
+		
+	} 
+	else if((pos[0]>90 && pos[0]<290) && (pos[1]>90 && pos[1]<160)){ 
+		image(ctx2);
+		en[1] = 0;
+		pos[0] = pos[2];
+		pos[1] = pos[3];
+		v[0] = 0;
+		v[1] = 0;
+	}
+	else if((pos[0]>110 && pos[0]<210) && (pos[1]>390 && pos[1]<560)){
+		image(ctx2);
+		en[1] = 0;
+		pos[0] = pos[2];
+		pos[1] = pos[3];
+		v[0] = 0;
+		v[1] = 0;		
+
+	}
+	else if((pos[0]>390 && pos[0]<610) && (pos[1]>140 && pos[1]<210)){
+		image(ctx2);
+		en[1] = 0;
+		pos[0] = pos[2];
+		pos[1] = pos[3];
+		v[0] = 0;
+		v[1] = 0;		
+		
+	}
+	else if((pos[0]>740 && pos[0]<810) && (pos[1]>210 && pos[1]<450)){
+		image(ctx2);
+		en[1] = 0;
+		pos[0] = pos[2];
+		pos[1] = pos[3];
+		v[0] = 0;
+		v[1] = 0;		
+	}
+	else if((pos[0]>350 && pos[0]<460) && (pos[1]>410 && pos[1]<590)){
+		image(ctx2);
+		en[1] = 0;
+		pos[0] = pos[2];
+		pos[1] = pos[3];
+		v[0] = 0;
+		v[1] = 0;		
+	}	
+	else{	
+		ctx2.clearRect(0, 0, 200, 200);
+		en[1] = 1;
+		pos[2] = pos[0];
+		pos[3] = pos[1];
+	}
+}
+		
+function stop(en)
+{
+	en[0] = 0;
+}
+ 	
+function image(ctx2)
+{	
+	var img=new Image()
+	img.src="warning.png"
+	ctx2.drawImage(img,0,0);
+	ctx2.font="20px Georgia";
+	ctx2.fillText('WARNING', 30, 180);
+}
+ 
+    // Pre-pad the arrays with # of samples null values
+for (var i=0; i< samples; ++i) {
+        d1.push(null);
+        d2.push(null);
+        d3.push(null);
+}
+	
+    var xmlHttp = createXmlHttpRequestObject();
+	
+
+    // creates XMLHttpRequest Instance
+    function createXmlHttpRequestObject(){
+
+      // will store XMLHttpRequest object
+      // at here
+      var xmlHttp;
+
+      // works all exceprt IE6 and older  
+      try
+      {
+      
+	// try to create XMLHttpRequest object
+	xmlHttp = new XMLHttpRequest();    
+      }
+      catch(e)
+      {
+	// assume IE 6 or older
+	try
+	{
+	  xmlHttp = new ActiveXObject("Microsoft.XMLHTTP");
+	}
+	catch(e){ }
+      }
+      
+      // return object or display error
+      if (!xmlHttp)
+	alert("Error creating the XMLHttpRequest Object");
+      else
+	return xmlHttp;
+    }
+
+function GetJsonData()
+{
+      //debug
+      //myDiv = document.getElementById("myDivElement"); 
+      //myDiv.innerHTML += "Getting Json Data<br>"; 
+      nodata=0;
+
+      if(xmlHttp)
+      {
+	try
+	{
+	  xmlHttp.open("Get", serverAddress, false);
+	  //xmlHttp.onreadystatechange = handleRequestStateChange; //We use synchronous data transfer, so we don't need this here
+	  xmlHttp.send(null);
+	  try{
+		  handleJsonData();
+	  }
+	  catch(err){
+	     if(err=="no data"){
+	          //alert('Waiting '+serverAddressBase+requestCounter);
+		  //setTimeout(GetJsonData,10); //Try again 10ms later
+		  nodata=1; //record status
+	     }
+	  }
+	}
+	catch(e)
+	{
+	  alert("Can't connect to server\n" + e.toString());
+	}
+      }
+}
+
+function handleRequestStateChange()
+{
+      if (xmlHttp.readyState == 4)
+      {
+	if(xmlHttp.status == 200|| xmlHttp.status == 0)
+	    {
+	      try
+	      {
+		handleJsonData();
+	      }
+	      catch(e)
+	      {
+		alert("Error reading the response: " + e.toString());
+	      }
+	    }
+	    else
+	    {
+	      alert("Problem retrieving data:\n" + xmlHttp.statusText);
+	    }
+      
+      
+      }
+      
+}
+
+function handleJsonData()
+{
+      var result = xmlHttp.responseText;
+      if(result==''){
+        //alert('No data from xmlhttprequest object!');
+	throw "no data";
+      }
+      else{
+	      try{
+		      var jobject = eval("(" + result + ")");
+		      var i=0;
+		      if(jobject.time>timecycle){
+			      timecycle=jobject.time;
+			      if(jobject.xarray.length==0){
+				throw "no data";
+			      }
+			      else{
+				      for (i=0;i<jobject.xarray.length;i++)
+				      {
+					  //debug
+					  //myDiv.innerHTML += jobject.xarray[i][0] + ", " + jobject.xarray[i][1] + "<br>" ;
+					  d1[i]=jobject.xarray[i][0];
+					  d2[i]=jobject.xarray[i][1];
+					  d3[i]=jobject.xarray[i][2];
+					  /*
+					  d1.push(jobject.xarray[i][0]); 
+					  d2.push(jobject.xarray[i][1]); 
+					  d3.push(jobject.xarray[i][2]);
+					  */
+								      }
+			      }
+		      }
+		      else{
+			//Do nothing
+		      }
+	      }
+	      catch(e){
+		//Retry; ignore all json errors
+	      }
+      }
+}
+          
+function graph (ctx,d1,d2,pos,vx,vy)
+{	
+	var dx=0;
+	var dy=0;
+        var i=0;	
+	for (i=0;i<30;i++){        		
+		if(en[0]==1 && en[1]==1){
+			if(d1[i]>400 || d1[i]<-400){
+				v[0] += d1[i]*9.8/3000;
+				dx = v[0]/3000 + 0.5*d1[i]*9.8/9000000;			
+			}
+			else{
+				v[0] = 0;
+				dx = 0;
+		
+			}
+			if(d2[i]>400 || d2[i]<-400){
+				v[1] += (-d2[i])*9.8/3000;
+				dy = v[1]/3000 + 0.5*(-d2[i])*9.8/9000000;				
+		
+			}
+			else{
+				v[1] = 0;
+				dy = 0;	
+		
+			}
+			document.getElementById("pos0").innerHTML = pos[0];
+			document.getElementById("pos1").innerHTML = 600-pos[1];
+			document.getElementById("v0").innerHTML = v[0];
+			document.getElementById("v1").innerHTML = -v[1];			
+			ctx.beginPath();
+			ctx.lineJoin="round";
+			ctx.lineCap="round";
+        		ctx.lineWidth = "5";
+        		ctx.strokeStyle = "green"; // Green path
+        		ctx.moveTo(pos[0], pos[1]);
+			pos[0] += dx;
+			pos[1] += dy;
+        		ctx.lineTo(pos[0], pos[1]);
+        		ctx.stroke(); // Draw it
+					 
+		}
+		else if (en[0]==0){
+			ctx.fillStyle="#FF0000";
+			ctx.beginPath();
+			ctx.arc(pos[0],pos[1],10,0,Math.PI*2,true);
+			ctx.closePath();
+			ctx.fill();
+			v[0] = 0;
+			v[1] = 0;
+			document.getElementById("v0").innerHTML = v[0];
+			document.getElementById("v1").innerHTML = -v[1];	
+		}
+		warning(ctx2,pos,en);
+	
+	}
+ 
+}
+function graph_init(ctx)
+{
+////////// block //////////////////	
+	ctx.fillStyle="#808080";	
+	ctx.beginPath();
+	ctx.lineWidth = "5";
+	ctx.strokeStyle = "black";
+	ctx.moveTo(100,100);
+	ctx.lineTo(100,150);
+	ctx.lineTo(280,150);
+	ctx.lineTo(280,100);
+	ctx.closePath();	
+	ctx.stroke();
+	ctx.fill();
+	ctx.beginPath();
+	ctx.moveTo(120,550);
+	ctx.lineTo(200,550);
+	ctx.lineTo(200,400);
+	ctx.lineTo(120,400);
+	ctx.closePath();	
+	ctx.stroke();
+	ctx.fill();
+	ctx.beginPath();
+	ctx.moveTo(800,220);
+	ctx.lineTo(750,220);
+	ctx.lineTo(750,440);
+	ctx.lineTo(800,440);
+	ctx.closePath();	
+	ctx.stroke();
+	ctx.fill();
+	ctx.beginPath();
+	ctx.moveTo(400,150);
+	ctx.lineTo(600,150);
+	ctx.lineTo(600,200);
+	ctx.lineTo(400,200);
+	ctx.closePath();	
+	ctx.stroke();
+	ctx.fill();
+	ctx.beginPath();
+	ctx.moveTo(360,580);
+	ctx.lineTo(360,420);
+	ctx.lineTo(450,420);
+	ctx.lineTo(450,580);
+	ctx.closePath();	
+	ctx.stroke();
+	ctx.fill();
+//////// initial point for object /////////////////
+	ctx.fillStyle="#000000";
+	ctx.beginPath();
+	ctx.arc(450,300,10,0,Math.PI*2,true);
+	ctx.closePath();
+	ctx.fill();
+
+}
+function draw ()
+{
+        //debug
+        //myDiv = document.getElementById("myDivElement"); 
+        //myDiv.innerHTML += "Request # " + requestCounter + ": <br>"; 
+
+	
+	//Prepare new file name to get from
+	serverAddress=serverAddressBase+requestCounter;
+	//alert('Debug'+serverAddress);
+
+        //Save data from json object to the arrays
+	GetJsonData();
+	//Draw the graph
+	graph (ctx,d1,d2,pos,v,en);
+	if(!nodata){ //Keep the file counter
+		requestCounter=(requestCounter+1)%2; //cycle counter
+		//alert('Counter changed: '+requestCounter);
+	}
+	else{
+		//alert('Counter keeped: '+requestCounter);
+	}
+	setTimeout(draw,800);
+	
+   	
+	
+}
+
+
+    graph_init(ctx);
+    draw();
+   
+	 
+//-->
+</script>
+</body>
+</html>
+
